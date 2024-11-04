@@ -1,0 +1,22 @@
+<div class="content" (mouseup)="showContextMenu($event)" tabindex="0">
+  <div [innerHTML]="getCurrentPageContent()"></div>
+</div>
+
+<div class="pagination">
+  <button (click)="prevPage()" [disabled]="currentPage === 1">Prev</button>
+  <span>Page {{ currentPage }} of {{ totalPages }}</span>
+  <button (click)="nextPage()" [disabled]="currentPage === totalPages">Next</button>
+</div>
+
+<!-- Context Menu -->
+<div *ngIf="isContextMenuVisible" class="context-menu"
+     [style.top.px]="contextMenuPosition.y"
+     [style.left.px]="contextMenuPosition.x"
+     (click)="$event.stopPropagation()">
+  <div *ngFor="let color of colors">
+    <input type="checkbox" [style.background]="color" [id]="color" />
+    <label [for]="color" [style.color]="color">{{ color }}</label>
+  </div>
+  <button (click)="highlightText()">Highlight Text</button>
+  <button (click)="addNote()">Add Note</button>
+</div>
