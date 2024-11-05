@@ -4,8 +4,8 @@ interface Highlight {
   text: string;
   color: string;
   page: number;
-  contextBefore: string; // Few words before the highlight
-  contextAfter: string; // Few words after the highlight
+  startOffset: number; // Start offset of the highlight within main div
+  endOffset: number;   // End offset of the highlight within main div
 }
 
 @Component({
@@ -18,13 +18,7 @@ export class HtmlDisplayComponent implements OnInit {
     'This is content 1 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     'This is content 2 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     'This is content 1 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
-    'This is content 2 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
-    'This is content 1 for record 3. In condimentum facilisis porta.',
-    'This is content 2 for record 3. In condimentum facilisis porta.',
-    'This is content 1 for record 4. Sed nec diam eu diam mattis viverra.',
-    'This is content 2 for record 4. Sed nec diam eu diam mattis viverra.',
-    'This is content 1 for record 5. Nulla fringilla, orci ac euismod semper.',
-    'This is content 2 for record 5. Nulla fringilla, orci ac euismod semper.'
+    'This is content 2 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.'
   ];
   pageContent: string[] = [];
   currentPage: number = 1;
@@ -33,7 +27,7 @@ export class HtmlDisplayComponent implements OnInit {
 
   isContextMenuVisible: boolean = false;
   contextMenuPosition = { x: 0, y: 0 };
-  colors: string[] = ['yellow', 'pink', 'lightgreen', 'lightblue', 'orange', 'lightgrey'];
+  colors = ['#ffcccb', '#add8e6', '#90ee90', '#ffebcd', '#e6e6fa', '#ffffe0'];
   selectedColorIndex: number | null = null;
   selectionText: string = '';
   selectionRange: Range | null = null;
@@ -50,10 +44,10 @@ export class HtmlDisplayComponent implements OnInit {
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     const endIndex = startIndex + this.itemsPerPage;
     this.pageContent = this.content.slice(startIndex, endIndex);
-    // Wait for the DOM to update before applying highlights
+
     setTimeout(() => {
       this.applyHighlightsFromStorage();
-    }, 0); // 0 milliseconds delay
+    }, 0);
   }
 
   prevPage(): void {
@@ -92,77 +86,96 @@ export class HtmlDisplayComponent implements OnInit {
     if (this.selectionText && this.selectedColorIndex !== null && this.selectionRange) {
       const color = this.colors[this.selectedColorIndex];
 
-      // Save context before and after the highlighted text
-      const contextBefore = this.getContextBefore(this.selectionRange.startContainer, this.selectionRange.startOffset);
-      const contextAfter = this.getContextAfter(this.selectionRange.endContainer, this.selectionRange.endOffset);
+      // Get start and end offsets relative to the main div element
+      const mainDiv = document.querySelector('.main-content');
+      if (mainDiv && this.selectionRange) {
+        const startOffset = this.getOffsetWithinMainDiv(this.selectionRange.startContainer, this.selectionRange.startOffset);
+        const endOffset = this.getOffsetWithinMainDiv(this.selectionRange.endContainer, this.selectionRange.endOffset);
 
-      const highlight: Highlight = {
-        text: this.selectionText,
-        color: color,
-        page: this.currentPage,
-        contextBefore: contextBefore,
-        contextAfter: contextAfter
-      };
+        const highlight: Highlight = {
+          text: this.selectionText,
+          color: color,
+          page: this.currentPage,
+          startOffset: startOffset,
+          endOffset: endOffset
+        };
 
-      this.highlights.push(highlight);
-      this.saveHighlightsToStorage();
-      this.applyHighlight(highlight);
-      this.hideContextMenu();
+        this.highlights.push(highlight);
+        this.saveHighlightsToStorage();
+        this.applyHighlight(highlight);
+        this.hideContextMenu();
+      }
     }
   }
 
-  getContextBefore(node: Node, startOffset: number): string {
-    const text = node.textContent || '';
-    const words = text.slice(0, startOffset).trim().split(' ');
-    return words.slice(Math.max(words.length - 5, 0)).join(' '); // Get last 5 words before
-  }
+  getOffsetWithinMainDiv(node: Node, offset: number): number {
+    const mainDiv = document.querySelector('.main-content');
+    if (!mainDiv) return -1;
 
-  getContextAfter(node: Node, endOffset: number): string {
-    const text = node.textContent || '';
-    const words = text.slice(endOffset).trim().split(' ');
-    return words.slice(0, 5).join(' '); // Get first 5 words after
+    let totalOffset = 0;
+    const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null); // Updated line
+
+    while (treeWalker.nextNode()) {
+      const currentNode = treeWalker.currentNode;
+      if (currentNode === node) {
+        return totalOffset + offset;
+      }
+      totalOffset += currentNode.textContent?.length || 0;
+    }
+    return -1;
   }
 
   applyHighlight(highlight: Highlight): void {
-    const contentElements = document.querySelectorAll('.content-item');
+    const mainDiv = document.querySelector('.content-container');
 
-    contentElements.forEach(contentElement => {
-      const textNodes = Array.from(contentElement.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
-      textNodes.forEach(textNode => {
-        const text = textNode.textContent || '';
-        const startIndex = text.indexOf(highlight.text);
+    if (!mainDiv) return;
 
-        // Check if the context matches before and after the highlight text
-        if (startIndex !== -1 && this.contextMatches(text, highlight, startIndex)) {
-          const endIndex = startIndex + highlight.text.length;
+    // Create a TreeWalker to iterate over all text nodes within the main div
+    const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null);
+    let currentNode: Node | null;
+    let charCount = 0;
 
-          const beforeText = text.slice(0, startIndex);
-          const highlightedText = text.slice(startIndex, endIndex);
-          const afterText = text.slice(endIndex);
+    // Loop through each text node
+    while ((currentNode = treeWalker.nextNode())) {
+      if (currentNode.nodeType === Node.TEXT_NODE) {
+        const text = currentNode.textContent || '';
+        const nodeStart = charCount;
+        const nodeEnd = charCount + text.length;
 
+        // Check if this node contains the range for the highlight
+        if (nodeStart <= highlight.startOffset && nodeEnd >= highlight.endOffset) {
+          const beforeText = text.slice(0, highlight.startOffset - nodeStart);
+          const highlightedText = text.slice(
+            highlight.startOffset - nodeStart,
+            highlight.endOffset - nodeStart
+          );
+          const afterText = text.slice(highlight.endOffset - nodeStart);
+
+          // Create a span to wrap the highlighted text
           const span = document.createElement('span');
           span.style.backgroundColor = highlight.color;
           span.textContent = highlightedText;
 
+          // Create text nodes for the non-highlighted text segments
           const beforeNode = document.createTextNode(beforeText);
           const afterNode = document.createTextNode(afterText);
-          contentElement.replaceChild(afterNode, textNode);
-          contentElement.insertBefore(span, afterNode);
-          contentElement.insertBefore(beforeNode, span);
+
+          // Replace the original text node with the new nodes
+          const parent = currentNode.parentNode;
+          if (parent) {
+            parent.replaceChild(afterNode, currentNode); // Insert afterText
+            parent.insertBefore(span, afterNode);         // Insert highlighted span
+            parent.insertBefore(beforeNode, span);        // Insert beforeText
+          }
+          break; // Exit once highlight is applied
         }
-      });
-    });
+
+        // Update character count to continue with the correct offset
+        charCount += text.length;
+      }
+    }
   }
 
-  contextMatches(text: string, highlight: Highlight, startIndex: number): boolean {
-    const beforeText = text.slice(0, startIndex);
-    const afterText = text.slice(startIndex + highlight.text.length);
-
-    const contextBeforeMatches = beforeText.trim().endsWith(highlight.contextBefore.trim());
-    const contextAfterMatches = afterText.trim().startsWith(highlight.contextAfter.trim());
-
-    return contextBeforeMatches && contextAfterMatches;
-  }
 
   saveHighlightsToStorage(): void {
     localStorage.setItem('highlights', JSON.stringify(this.highlights));

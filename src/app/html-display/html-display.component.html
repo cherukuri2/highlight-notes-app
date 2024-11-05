@@ -1,6 +1,14 @@
 <div class="content-container">
-  <!-- Display each content item on the current page -->
-  <p *ngFor="let content of pageContent" class="content-item" [innerHTML]="content | safeHtml" (mouseup)="showContextMenu($event)"></p>
+  <!-- Main content div where the highlighted range offsets are relative to -->
+  <div class="main-content">
+    <!-- Display each content item on the current page with safe HTML rendering -->
+    <p
+      *ngFor="let content of pageContent"
+      class="content-item"
+      [innerHTML]="content | safeHtml"
+      (mouseup)="showContextMenu($event)"
+    ></p>
+  </div>
 
   <!-- Pagination controls -->
   <div class="pagination-controls">
@@ -10,14 +18,14 @@
   </div>
 </div>
 
-<!-- Context Menu -->
+<!-- Context Menu for highlight options -->
 <div
   *ngIf="isContextMenuVisible"
   class="context-menu"
   [ngStyle]="{ top: contextMenuPosition.y + 'px', left: contextMenuPosition.x + 'px' }"
 >
   <div class="checkbox-container">
-    <!-- Color checkboxes displayed horizontally without labels -->
+    <!-- Color selection checkboxes -->
     <input
       type="checkbox"
       *ngFor="let color of colors; let i = index"
@@ -27,10 +35,10 @@
     />
   </div>
 
-  <!-- Action buttons -->
+  <!-- Action buttons for highlight, add note, and cancel -->
   <div class="button-container">
     <button (click)="highlightText()">Save Highlight</button>
     <button (click)="addNote()">Add Note</button>
-    <button (click)="hideContextMenu()">Cancel</button> <!-- Added Cancel button -->
+    <button (click)="hideContextMenu()">Cancel</button>
   </div>
 </div>
