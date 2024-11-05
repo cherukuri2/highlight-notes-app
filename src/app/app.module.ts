@@ -3,13 +3,15 @@ import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';  // Import FormsModule
 import { AppComponent } from './app.component';
 import { HtmlDisplayComponent } from './html-display/html-display.component';
+import { SafeHtmlPipe } from './pipes/safehtml.pipe';
 
 
 
 @NgModule({
   declarations: [
     AppComponent,
-    HtmlDisplayComponent
+    HtmlDisplayComponent,
+    SafeHtmlPipe
   ],
   imports: [
     BrowserModule,

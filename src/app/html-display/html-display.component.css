@@ -1,30 +1,59 @@
-.content {
-  margin: 20px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  padding: 10px;
+.content-container {
+  padding: 20px;
 }
 
-.pagination {
+.content-item {
+  margin-bottom: 15px;
+  cursor: text;
+}
+
+.pagination-controls {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
   margin-top: 20px;
+}
+
+.pagination-controls button {
+  margin: 0 10px;
 }
 
 .context-menu {
   position: absolute;
-  background: white;
+  background: #f9f9f9;
   border: 1px solid #ccc;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
 }
 
-.context-menu div {
-  margin: 5px 0;
+.checkbox-container {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
 }
 
-.context-menu button {
-  margin-top: 10px;
-  margin-right: 5px;
+.checkbox-container input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  border: none;
+  appearance: none;
+}
+
+.checkbox-container input[type="checkbox"]:checked {
+  outline: 2px solid black;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.button-container button {
+  padding: 5px 10px;
+  cursor: pointer;
 }
