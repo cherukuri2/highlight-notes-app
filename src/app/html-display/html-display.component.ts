@@ -4,8 +4,8 @@ interface Highlight {
   text: string;
   color: string;
   page: number;
-  startOffset: number;
-  endOffset: number;
+  contextBefore: string; // Few words before the highlight
+  contextAfter: string; // Few words after the highlight
 }
 
 @Component({
@@ -15,15 +15,20 @@ interface Highlight {
 })
 export class HtmlDisplayComponent implements OnInit {
   content: string[] = [
-    'This is content for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    'This is content for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
-    'This is content for record 3. In condimentum facilisis porta.',
-    'This is content for record 4. Sed nec diam eu diam mattis viverra.',
-    'This is content for record 5. Nulla fringilla, orci ac euismod semper.'
+    'This is content 1 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    'This is content 2 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    'This is content 1 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
+    'This is content 2 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
+    'This is content 1 for record 3. In condimentum facilisis porta.',
+    'This is content 2 for record 3. In condimentum facilisis porta.',
+    'This is content 1 for record 4. Sed nec diam eu diam mattis viverra.',
+    'This is content 2 for record 4. Sed nec diam eu diam mattis viverra.',
+    'This is content 1 for record 5. Nulla fringilla, orci ac euismod semper.',
+    'This is content 2 for record 5. Nulla fringilla, orci ac euismod semper.'
   ];
   pageContent: string[] = [];
   currentPage: number = 1;
-  itemsPerPage: number = 1;
+  itemsPerPage: number = 2;
   totalPages: number = Math.ceil(this.content.length / this.itemsPerPage);
 
   isContextMenuVisible: boolean = false;
@@ -36,7 +41,6 @@ export class HtmlDisplayComponent implements OnInit {
   highlights: Highlight[] = [];
 
   ngOnInit(): void {
-    console.log('onInit called...');
     localStorage.removeItem('highlights');
     this.loadPageContent();
     this.loadHighlightsFromStorage();
@@ -46,7 +50,6 @@ export class HtmlDisplayComponent implements OnInit {
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     const endIndex = startIndex + this.itemsPerPage;
     this.pageContent = this.content.slice(startIndex, endIndex);
-    console.log('Current page content ' + this.pageContent);
     // Wait for the DOM to update before applying highlights
     setTimeout(() => {
       this.applyHighlightsFromStorage();
@@ -88,13 +91,19 @@ export class HtmlDisplayComponent implements OnInit {
   highlightText(): void {
     if (this.selectionText && this.selectedColorIndex !== null && this.selectionRange) {
       const color = this.colors[this.selectedColorIndex];
+
+      // Save context before and after the highlighted text
+      const contextBefore = this.getContextBefore(this.selectionRange.startContainer, this.selectionRange.startOffset);
+      const contextAfter = this.getContextAfter(this.selectionRange.endContainer, this.selectionRange.endOffset);
+
       const highlight: Highlight = {
         text: this.selectionText,
         color: color,
         page: this.currentPage,
-        startOffset: this.selectionRange.startOffset,
-        endOffset: this.selectionRange.endOffset
+        contextBefore: contextBefore,
+        contextAfter: contextAfter
       };
+
       this.highlights.push(highlight);
       this.saveHighlightsToStorage();
       this.applyHighlight(highlight);
@@ -102,44 +111,57 @@ export class HtmlDisplayComponent implements OnInit {
     }
   }
 
+  getContextBefore(node: Node, startOffset: number): string {
+    const text = node.textContent || '';
+    const words = text.slice(0, startOffset).trim().split(' ');
+    return words.slice(Math.max(words.length - 5, 0)).join(' '); // Get last 5 words before
+  }
+
+  getContextAfter(node: Node, endOffset: number): string {
+    const text = node.textContent || '';
+    const words = text.slice(endOffset).trim().split(' ');
+    return words.slice(0, 5).join(' '); // Get first 5 words after
+  }
+
   applyHighlight(highlight: Highlight): void {
-    console.log('inside highlight ' + highlight.page);
     const contentElements = document.querySelectorAll('.content-item');
 
     contentElements.forEach(contentElement => {
-      console.log('contentElement => ' + contentElement.outerHTML);
       const textNodes = Array.from(contentElement.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
-      console.log('textNodes ' + textNodes.length);
       textNodes.forEach(textNode => {
         const text = textNode.textContent || '';
-        console.log('text ==>  ' + text);
-        if (text.includes(highlight.text)) {
-          const startIndex = text.indexOf(highlight.text);
+        const startIndex = text.indexOf(highlight.text);
+
+        // Check if the context matches before and after the highlight text
+        if (startIndex !== -1 && this.contextMatches(text, highlight, startIndex)) {
           const endIndex = startIndex + highlight.text.length;
 
-          if (startIndex === highlight.startOffset && endIndex === highlight.endOffset) {
-            const beforeText = text.slice(0, startIndex);
-            const highlightedText = text.slice(startIndex, endIndex);
-            const afterText = text.slice(endIndex);
+          const beforeText = text.slice(0, startIndex);
+          const highlightedText = text.slice(startIndex, endIndex);
+          const afterText = text.slice(endIndex);
 
-            const span = document.createElement('span');
-            span.style.backgroundColor = highlight.color;
-            span.textContent = highlightedText;
+          const span = document.createElement('span');
+          span.style.backgroundColor = highlight.color;
+          span.textContent = highlightedText;
 
-            console.log('Highlight span element HTML:', span.outerHTML);
-
-            const beforeNode = document.createTextNode(beforeText);
-            const afterNode = document.createTextNode(afterText);
-            contentElement.replaceChild(afterNode, textNode);
-            contentElement.insertBefore(span, afterNode);
-            contentElement.insertBefore(beforeNode, span);
-
-            console.log('Updated contentElement HTML:', contentElement.innerHTML);
-
-          }
+          const beforeNode = document.createTextNode(beforeText);
+          const afterNode = document.createTextNode(afterText);
+          contentElement.replaceChild(afterNode, textNode);
+          contentElement.insertBefore(span, afterNode);
+          contentElement.insertBefore(beforeNode, span);
         }
       });
     });
+  }
+
+  contextMatches(text: string, highlight: Highlight, startIndex: number): boolean {
+    const beforeText = text.slice(0, startIndex);
+    const afterText = text.slice(startIndex + highlight.text.length);
+
+    const contextBeforeMatches = beforeText.trim().endsWith(highlight.contextBefore.trim());
+    const contextAfterMatches = afterText.trim().startsWith(highlight.contextAfter.trim());
+
+    return contextBeforeMatches && contextAfterMatches;
   }
 
   saveHighlightsToStorage(): void {
@@ -154,8 +176,6 @@ export class HtmlDisplayComponent implements OnInit {
   }
 
   applyHighlightsFromStorage(): void {
-    console.log('this.currentPage ' + this.currentPage);
-    console.log('this.highlights => ' + JSON.stringify(this.highlights));
     this.highlights
       .filter(highlight => highlight.page === this.currentPage)
       .forEach(highlight => this.applyHighlight(highlight));

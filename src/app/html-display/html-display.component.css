@@ -51,6 +51,7 @@
 .button-container {
   display: flex;
   justify-content: space-between;
+  gap: 1em;
 }
 
 .button-container button {
