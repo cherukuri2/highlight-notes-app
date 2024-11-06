@@ -1,0 +1,23 @@
+<h2 mat-dialog-title class="dialog-title">Add Note</h2>
+
+<div mat-dialog-content class="dialog-content">
+  <mat-form-field class="form-field">
+    <mat-label>Title</mat-label>
+    <input matInput [(ngModel)]="title" placeholder="Enter title">
+  </mat-form-field>
+
+  <mat-form-field class="form-field">
+    <mat-label>Category</mat-label>
+    <input matInput [(ngModel)]="category" placeholder="Enter category">
+  </mat-form-field>
+
+  <mat-form-field class="form-field">
+    <mat-label>Note</mat-label>
+    <div contenteditable="true" class="note-content" (input)="onContentInput($event)" placeholder="Enter note content"></div>
+  </mat-form-field>
+</div>
+
+<div mat-dialog-actions class="dialog-actions">
+  <button mat-button (click)="onNoClick()">Cancel</button>
+  <button mat-button (click)="onSave()">Save</button>
+</div>

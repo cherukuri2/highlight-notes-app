@@ -1,11 +1,13 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { NoteDialogComponent } from '../note-dialog/note-dialog.component';
 
 interface Highlight {
   text: string;
   color: string;
   page: number;
-  startOffset: number; // Start offset of the highlight within main div
-  endOffset: number;   // End offset of the highlight within main div
+  startOffset: number;
+  endOffset: number;
 }
 
 @Component({
@@ -33,6 +35,8 @@ export class HtmlDisplayComponent implements OnInit {
   selectionRange: Range | null = null;
 
   highlights: Highlight[] = [];
+
+  constructor(public dialog: MatDialog) {}
 
   ngOnInit(): void {
     localStorage.removeItem('highlights');
@@ -85,8 +89,6 @@ export class HtmlDisplayComponent implements OnInit {
   highlightText(): void {
     if (this.selectionText && this.selectedColorIndex !== null && this.selectionRange) {
       const color = this.colors[this.selectedColorIndex];
-
-      // Get start and end offsets relative to the main div element
       const mainDiv = document.querySelector('.main-content');
       if (mainDiv && this.selectionRange) {
         const startOffset = this.getOffsetWithinMainDiv(this.selectionRange.startContainer, this.selectionRange.startOffset);
@@ -94,10 +96,10 @@ export class HtmlDisplayComponent implements OnInit {
 
         const highlight: Highlight = {
           text: this.selectionText,
-          color: color,
+          color,
           page: this.currentPage,
-          startOffset: startOffset,
-          endOffset: endOffset
+          startOffset,
+          endOffset
         };
 
         this.highlights.push(highlight);
@@ -113,8 +115,7 @@ export class HtmlDisplayComponent implements OnInit {
     if (!mainDiv) return -1;
 
     let totalOffset = 0;
-    const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null); // Updated line
-
+    const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null);
     while (treeWalker.nextNode()) {
       const currentNode = treeWalker.currentNode;
       if (currentNode === node) {
@@ -125,57 +126,45 @@ export class HtmlDisplayComponent implements OnInit {
     return -1;
   }
 
+
   applyHighlight(highlight: Highlight): void {
     const mainDiv = document.querySelector('.content-container');
-
     if (!mainDiv) return;
 
-    // Create a TreeWalker to iterate over all text nodes within the main div
     const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null);
     let currentNode: Node | null;
     let charCount = 0;
 
-    // Loop through each text node
     while ((currentNode = treeWalker.nextNode())) {
       if (currentNode.nodeType === Node.TEXT_NODE) {
         const text = currentNode.textContent || '';
         const nodeStart = charCount;
         const nodeEnd = charCount + text.length;
 
-        // Check if this node contains the range for the highlight
         if (nodeStart <= highlight.startOffset && nodeEnd >= highlight.endOffset) {
           const beforeText = text.slice(0, highlight.startOffset - nodeStart);
-          const highlightedText = text.slice(
-            highlight.startOffset - nodeStart,
-            highlight.endOffset - nodeStart
-          );
+          const highlightedText = text.slice(highlight.startOffset - nodeStart, highlight.endOffset - nodeStart);
           const afterText = text.slice(highlight.endOffset - nodeStart);
 
-          // Create a span to wrap the highlighted text
           const span = document.createElement('span');
           span.style.backgroundColor = highlight.color;
           span.textContent = highlightedText;
 
-          // Create text nodes for the non-highlighted text segments
           const beforeNode = document.createTextNode(beforeText);
           const afterNode = document.createTextNode(afterText);
 
-          // Replace the original text node with the new nodes
           const parent = currentNode.parentNode;
           if (parent) {
-            parent.replaceChild(afterNode, currentNode); // Insert afterText
-            parent.insertBefore(span, afterNode);         // Insert highlighted span
-            parent.insertBefore(beforeNode, span);        // Insert beforeText
+            parent.replaceChild(afterNode, currentNode);
+            parent.insertBefore(span, afterNode);
+            parent.insertBefore(beforeNode, span);
           }
-          break; // Exit once highlight is applied
+          break;
         }
-
-        // Update character count to continue with the correct offset
         charCount += text.length;
       }
     }
   }
-
 
   saveHighlightsToStorage(): void {
     localStorage.setItem('highlights', JSON.stringify(this.highlights));
@@ -195,6 +184,25 @@ export class HtmlDisplayComponent implements OnInit {
   }
 
   addNote(): void {
-    console.log("Add Note functionality not implemented yet.");
+    const dialogRef = this.dialog.open(NoteDialogComponent, {
+      width: '400px',
+      data: { title: '', category: '', noteContent: '' },
+      panelClass: 'dialog-container',  // Apply custom styling to the dialog container
+    });
+
+    // Apply the blur effect to the background when the dialog is opened
+    document.body.classList.add('dialog-backdrop');
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Save the note to associate with the selected word or text
+        console.log("Note saved:", result);
+      }
+      // Remove the blur effect when the dialog is closed
+      document.body.classList.remove('dialog-backdrop');
+    });
   }
+
+
+
 }

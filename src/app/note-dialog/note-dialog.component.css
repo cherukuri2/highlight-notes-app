@@ -1,0 +1,74 @@
+/* Ensure the dialog container is centered */
+.mat-dialog-container {
+  position: fixed;  /* Fixed positioning to keep it in the center of the screen */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 80%;    /* Limit the dialog's width */
+  width: 400px;      /* Set a fixed width for the dialog */
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 1050 !important; /* Ensure it's above the highlight popover */
+  overflow: hidden;
+}
+
+/* Apply blur effect to background when dialog is open */
+.dialog-backdrop {
+  backdrop-filter: blur(5px); /* Apply blur to the background */
+  z-index: 1040 !important;   /* Behind the dialog */
+}
+
+/* Center the title in the dialog */
+.dialog-title {
+  margin-bottom: 20px;
+  font-size: 20px;
+  text-align: center;
+}
+
+/* Style for the content inside the dialog */
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-field {
+  width: 100%;
+}
+
+.note-content {
+  width: 100%;
+  height: 150px;
+  padding: 10px;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  resize: none;
+  min-height: 100px;
+}
+
+/* Style for dialog action buttons */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dialog-actions button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 5px;
+  border: none;
+}
+
+.dialog-actions button:hover {
+  background-color: #0056b3;
+}

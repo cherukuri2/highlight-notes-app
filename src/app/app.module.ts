@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';  // Import FormsModule
 import { AppComponent } from './app.component';
 import { HtmlDisplayComponent } from './html-display/html-display.component';
 import { SafeHtmlPipe } from './pipes/safehtml.pipe';
+import { NoteDialogComponent } from './note-dialog/note-dialog.component';
+import { MatDialogModule } from '@angular/material/dialog';
 
 
 
@@ -11,10 +13,12 @@ import { SafeHtmlPipe } from './pipes/safehtml.pipe';
   declarations: [
     AppComponent,
     HtmlDisplayComponent,
+    NoteDialogComponent,
     SafeHtmlPipe
   ],
   imports: [
     BrowserModule,
+    MatDialogModule,
     FormsModule  // Add FormsModule here
   ],
   providers: [],
