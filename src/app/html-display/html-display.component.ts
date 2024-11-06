@@ -1,4 +1,4 @@
-import { Component, OnInit, Renderer2 } from '@angular/core';
+import { Component, HostListener, OnInit, Renderer2 } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { NoteDialogComponent } from '../note-dialog/note-dialog.component';
 
@@ -27,10 +27,10 @@ interface Note {
 })
 export class HtmlDisplayComponent implements OnInit {
   content: string[] = [
-    'This is content 1 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    'This is content 2 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-    'This is content 1 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.',
-    'This is content 2 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.'
+    'This is content 1 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit.Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    'This is content 2 for record 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit.Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    'This is content 1 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    'This is content 2 for record 2. Vivamus luctus urna sed urna ultricies ac tempor dui sagittis. Lorem ipsum dolor sit amet, consectetur adipiscing elit.'
   ];
   pageContent: string[] = [];
   currentPage: number = 1;
@@ -51,6 +51,9 @@ export class HtmlDisplayComponent implements OnInit {
   isNotePopoverVisible: boolean = false;
   notePopoverPosition = { x: 0, y: 0 };
 
+    // For popover visibility
+    isPopoverVisible: boolean = false;
+    notePopoverElement: HTMLElement | null = null;
 
   constructor(public dialog: MatDialog, private renderer: Renderer2) {}
 
@@ -93,10 +96,18 @@ export class HtmlDisplayComponent implements OnInit {
       this.selectionRange = selection.getRangeAt(0);
       this.isContextMenuVisible = true;
       this.contextMenuPosition = { x: event.clientX, y: event.clientY };
+
+      // Clear the selected color when the popup appears
+      this.selectedColorIndex = null;
     }
   }
 
   hideContextMenu(): void {
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+    }
+
     this.isContextMenuVisible = false;
   }
 
@@ -284,6 +295,12 @@ export class HtmlDisplayComponent implements OnInit {
   }
 
   openNotePopover(note: Note, event: MouseEvent): void {
+
+    this.isPopoverVisible = true;
+    // Store the element to track it for closing
+    this.notePopoverElement = event.target as HTMLElement;
+
+
     this.selectedNote = note;
     this.isNotePopoverVisible = true;
     this.notePopoverPosition = { x: event.clientX + 10, y: event.clientY + 10 };
@@ -292,5 +309,16 @@ export class HtmlDisplayComponent implements OnInit {
   closeNotePopover(): void {
     this.isNotePopoverVisible = false;
     this.selectedNote = null;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    // Check if the click is outside the note popover
+    if (this.isPopoverVisible && this.notePopoverElement) {
+      const clickedInsidePopover = this.notePopoverElement.contains(event.target as Node);
+      if (!clickedInsidePopover) {
+        this.closeNotePopover();
+      }
+    }
   }
 }
