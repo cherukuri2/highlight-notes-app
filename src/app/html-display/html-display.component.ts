@@ -10,6 +10,16 @@ interface Highlight {
   endOffset: number;
 }
 
+interface Note {
+  text: string;
+  page: number;
+  startOffset: number;
+  endOffset: number;
+  title: string;
+  category: string;
+  noteContent: string;
+}
+
 @Component({
   selector: 'app-html-display',
   templateUrl: './html-display.component.html',
@@ -35,13 +45,15 @@ export class HtmlDisplayComponent implements OnInit {
   selectionRange: Range | null = null;
 
   highlights: Highlight[] = [];
+  notes: Note[] = [];
 
   constructor(public dialog: MatDialog) {}
 
   ngOnInit(): void {
     localStorage.removeItem('highlights');
+    localStorage.removeItem('notes');
     this.loadPageContent();
-    this.loadHighlightsFromStorage();
+    this.loadHighlightsAndNotesFromStorage();
   }
 
   loadPageContent(): void {
@@ -50,7 +62,7 @@ export class HtmlDisplayComponent implements OnInit {
     this.pageContent = this.content.slice(startIndex, endIndex);
 
     setTimeout(() => {
-      this.applyHighlightsFromStorage();
+      this.applyHighlightsAndNotes();
     }, 0);
   }
 
@@ -103,11 +115,41 @@ export class HtmlDisplayComponent implements OnInit {
         };
 
         this.highlights.push(highlight);
-        this.saveHighlightsToStorage();
+        this.saveToStorage();
         this.applyHighlight(highlight);
         this.hideContextMenu();
       }
     }
+  }
+
+  addNote(): void {
+    const dialogRef = this.dialog.open(NoteDialogComponent, {
+      width: '400px',
+      data: { title: '', category: '', noteContent: '' },
+      panelClass: 'dialog-container',
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && this.selectionRange) {
+        const startOffset = this.getOffsetWithinMainDiv(this.selectionRange.startContainer, this.selectionRange.startOffset);
+        const endOffset = this.getOffsetWithinMainDiv(this.selectionRange.endContainer, this.selectionRange.endOffset);
+
+        const note: Note = {
+          text: this.selectionText,
+          page: this.currentPage,
+          startOffset,
+          endOffset,
+          title: result.title,
+          category: result.category,
+          noteContent: result.noteContent
+        };
+
+        this.notes.push(note);
+        this.saveToStorage();
+        this.applyNoteIcon(note);
+        this.hideContextMenu();
+      }
+    });
   }
 
   getOffsetWithinMainDiv(node: Node, offset: number): number {
@@ -126,14 +168,21 @@ export class HtmlDisplayComponent implements OnInit {
     return -1;
   }
 
-
   applyHighlight(highlight: Highlight): void {
+    this.applyTextDecoration(highlight.startOffset, highlight.endOffset, highlight.color);
+  }
+
+  applyNoteIcon(note: Note): void {
+    this.applyTextDecoration(note.startOffset, note.endOffset, 'none', note);
+  }
+
+  applyTextDecoration(startOffset: number, endOffset: number, color: string, note: Note | null = null): void {
     const mainDiv = document.querySelector('.content-container');
     if (!mainDiv) return;
 
     const treeWalker = document.createTreeWalker(mainDiv, NodeFilter.SHOW_TEXT, null);
-    let currentNode: Node | null;
     let charCount = 0;
+    let currentNode: Node | null;
 
     while ((currentNode = treeWalker.nextNode())) {
       if (currentNode.nodeType === Node.TEXT_NODE) {
@@ -141,23 +190,43 @@ export class HtmlDisplayComponent implements OnInit {
         const nodeStart = charCount;
         const nodeEnd = charCount + text.length;
 
-        if (nodeStart <= highlight.startOffset && nodeEnd >= highlight.endOffset) {
-          const beforeText = text.slice(0, highlight.startOffset - nodeStart);
-          const highlightedText = text.slice(highlight.startOffset - nodeStart, highlight.endOffset - nodeStart);
-          const afterText = text.slice(highlight.endOffset - nodeStart);
+        if (nodeStart <= startOffset && nodeEnd >= endOffset) {
+          const beforeText = text.slice(0, startOffset - nodeStart);
+          const decoratedText = text.slice(startOffset - nodeStart, endOffset - nodeStart);
+          const afterText = text.slice(endOffset - nodeStart);
 
           const span = document.createElement('span');
-          span.style.backgroundColor = highlight.color;
-          span.textContent = highlightedText;
+          span.style.backgroundColor = color;
+          span.textContent = decoratedText;
+          console.log('Inside applying.. ' + decoratedText + ' ' + color);
 
-          const beforeNode = document.createTextNode(beforeText);
-          const afterNode = document.createTextNode(afterText);
+          if (note) {
+            const iconSpan = document.createElement('span');
+            iconSpan.classList.add('note-icon');
+            iconSpan.textContent = '📝';
+            iconSpan.style.cursor = 'pointer';
+            iconSpan.onclick = () => this.openNotePopover(note);
 
-          const parent = currentNode.parentNode;
-          if (parent) {
-            parent.replaceChild(afterNode, currentNode);
-            parent.insertBefore(span, afterNode);
-            parent.insertBefore(beforeNode, span);
+            const beforeNode = document.createTextNode(beforeText);
+            const afterNode = document.createTextNode(afterText);
+            const parent = currentNode.parentNode;
+
+            if (parent) {
+              parent.replaceChild(afterNode, currentNode);
+              parent.insertBefore(span, afterNode);
+              span.insertBefore(iconSpan, span.firstChild);
+              parent.insertBefore(beforeNode, span);
+            }
+          }else{
+            const beforeNode = document.createTextNode(beforeText);
+            const afterNode = document.createTextNode(afterText);
+
+            const parent = currentNode.parentNode;
+            if (parent) {
+              parent.replaceChild(afterNode, currentNode);
+              parent.insertBefore(span, afterNode);
+              parent.insertBefore(beforeNode, span);
+            }
           }
           break;
         }
@@ -166,43 +235,34 @@ export class HtmlDisplayComponent implements OnInit {
     }
   }
 
-  saveHighlightsToStorage(): void {
+  saveToStorage(): void {
     localStorage.setItem('highlights', JSON.stringify(this.highlights));
+    localStorage.setItem('notes', JSON.stringify(this.notes));
   }
 
-  loadHighlightsFromStorage(): void {
+  loadHighlightsAndNotesFromStorage(): void {
     const storedHighlights = localStorage.getItem('highlights');
+    const storedNotes = localStorage.getItem('notes');
     if (storedHighlights) {
       this.highlights = JSON.parse(storedHighlights).filter((h: Highlight) => h.page === this.currentPage);
     }
+    if (storedNotes) {
+      this.notes = JSON.parse(storedNotes).filter((n: Note) => n.page === this.currentPage);
+    }
   }
 
-  applyHighlightsFromStorage(): void {
+  applyHighlightsAndNotes(): void {
     this.highlights
       .filter(highlight => highlight.page === this.currentPage)
       .forEach(highlight => this.applyHighlight(highlight));
+
+    this.notes
+      .filter(note => note.page === this.currentPage)
+      .forEach(note => this.applyNoteIcon(note));
+
   }
 
-  addNote(): void {
-    const dialogRef = this.dialog.open(NoteDialogComponent, {
-      width: '400px',
-      data: { title: '', category: '', noteContent: '' },
-      panelClass: 'dialog-container',  // Apply custom styling to the dialog container
-    });
-
-    // Apply the blur effect to the background when the dialog is opened
-    document.body.classList.add('dialog-backdrop');
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        // Save the note to associate with the selected word or text
-        console.log("Note saved:", result);
-      }
-      // Remove the blur effect when the dialog is closed
-      document.body.classList.remove('dialog-backdrop');
-    });
+  openNotePopover(note: Note): void {
+    alert(`Title: ${note.title}\nCategory: ${note.category}\nContent: ${note.noteContent}`);
   }
-
-
-
 }
