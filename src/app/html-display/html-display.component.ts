@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Renderer2 } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { NoteDialogComponent } from '../note-dialog/note-dialog.component';
 
@@ -47,7 +47,13 @@ export class HtmlDisplayComponent implements OnInit {
   highlights: Highlight[] = [];
   notes: Note[] = [];
 
-  constructor(public dialog: MatDialog) {}
+  selectedNote: Note | null = null;
+  isNotePopoverVisible: boolean = false;
+  notePopoverPosition = { x: 0, y: 0 };
+
+
+  constructor(public dialog: MatDialog, private renderer: Renderer2) {}
+
 
   ngOnInit(): void {
     localStorage.removeItem('highlights');
@@ -201,11 +207,26 @@ export class HtmlDisplayComponent implements OnInit {
           console.log('Inside applying.. ' + decoratedText + ' ' + color);
 
           if (note) {
-            const iconSpan = document.createElement('span');
-            iconSpan.classList.add('note-icon');
-            iconSpan.textContent = '📝';
-            iconSpan.style.cursor = 'pointer';
-            iconSpan.onclick = () => this.openNotePopover(note);
+            const iconButton = document.createElement('button');
+            iconButton.style.backgroundColor = 'transparent';
+            iconButton.style.border = 'none';
+            iconButton.style.padding = '0';
+            iconButton.style.width = '24px';  // Set width based on image size
+            iconButton.style.height = '24px'; // Set height based on image size
+
+            // Add an image inside the button
+            const iconImage = document.createElement('img');
+            iconImage.src = 'https://cdn1.iconfinder.com/data/icons/hawcons/32/699315-icon-44-note-text-1024.png';
+
+            iconImage.alt = 'Note Icon';
+            iconImage.style.width = '100%';
+            iconImage.style.height = '100%';
+
+            // Append the image to the button
+            iconButton.appendChild(iconImage);
+
+            // Set the onclick handler for the button
+            iconButton.onclick = (event: MouseEvent) => this.openNotePopover(note, event);
 
             const beforeNode = document.createTextNode(beforeText);
             const afterNode = document.createTextNode(afterText);
@@ -214,7 +235,7 @@ export class HtmlDisplayComponent implements OnInit {
             if (parent) {
               parent.replaceChild(afterNode, currentNode);
               parent.insertBefore(span, afterNode);
-              span.insertBefore(iconSpan, span.firstChild);
+              span.insertBefore(iconButton, span.firstChild);
               parent.insertBefore(beforeNode, span);
             }
           }else{
@@ -262,7 +283,14 @@ export class HtmlDisplayComponent implements OnInit {
 
   }
 
-  openNotePopover(note: Note): void {
-    alert(`Title: ${note.title}\nCategory: ${note.category}\nContent: ${note.noteContent}`);
+  openNotePopover(note: Note, event: MouseEvent): void {
+    this.selectedNote = note;
+    this.isNotePopoverVisible = true;
+    this.notePopoverPosition = { x: event.clientX + 10, y: event.clientY + 10 };
+  }
+
+  closeNotePopover(): void {
+    this.isNotePopoverVisible = false;
+    this.selectedNote = null;
   }
 }

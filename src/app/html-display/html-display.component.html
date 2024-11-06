@@ -21,3 +21,15 @@
     <button (click)="hideContextMenu()">Cancel</button>
   </div>
 </div>
+
+<!-- Note Popover -->
+<div
+  *ngIf="isNotePopoverVisible && selectedNote"
+  class="note-popover"
+  [ngStyle]="{ top: notePopoverPosition.y + 'px', left: notePopoverPosition.x + 'px' }"
+  (mouseleave)="closeNotePopover()"
+>
+  <h3>{{ selectedNote.title }}</h3>
+  <p><strong>Category:</strong> {{ selectedNote.category }}</p>
+  <p>{{ selectedNote.noteContent }}</p>
+</div>
